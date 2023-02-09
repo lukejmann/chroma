@@ -58,7 +58,7 @@ export const getDefaultTheme = () => {
       colorPickerWidth: "$controlWidth",
       colorPickerHeight: "100px",
       imagePreviewWidth: "$controlWidth",
-      imagePreviewHeight: "400px",
+      imagePreviewHeight: "300px",
       monitorHeight: "60px",
       titleBarHeight: "39px",
     },

@@ -56,7 +56,7 @@ export const UploadArea = styled.div`
 
 export const ImageLargePreview = s1("div", {
   // $flexCenter: "",
-  width: "400px",
+  width: "300px",
 
   height: "$imagePreviewHeight",
   borderRadius: "$sm",
