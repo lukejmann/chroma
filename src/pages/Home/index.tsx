@@ -1,5 +1,5 @@
 import { AutoColumn } from "components/Column";
-import { useControls } from "components/controls";
+import { folder, useControls } from "components/controls";
 // import { useControls } from "leva";
 // import { useControls } from "controls";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -183,73 +183,7 @@ const chromaStore = proxy({
 });
 
 export default function Home() {
-  const { images } = useSnapshot(chromaStore);
-
-  const [files, setFiles] = useState([] as any[]);
-  const { getRootProps, getInputProps } = useDropzone({
-    // accept is form [key: string]: string[];
-    accept: { "image/*": [] },
-    onDrop: (acceptedFiles) => {
-      setFiles(
-        acceptedFiles.map((file) => {
-          console.log("file", file);
-          return Object.assign(file, {
-            preview: URL.createObjectURL(file),
-          });
-        })
-      );
-    },
-  });
-
-  useEffect(() => {
-    files.forEach((file) => URL.revokeObjectURL((file as any).preview));
-  }, [files]);
-
-  // const imageToUse = files.length > 0 ? files[0] : undefined;
-
-  const imageRef = useRef<HTMLImageElement>(null);
-
-  const [rgbaDatas, setRgbData] = useState([] as RGBADatapoint[]);
-
-  // const [loaded, setLoaded] = useState(false);
-
-  const {
-    maxColors,
-    ignoreColor,
-    ignoreHueDifference,
-    ignoreSaturationDifference,
-    ignoreBrightnessDifference,
-    hueWeight,
-    saturationWeight,
-    brightnessWeight,
-    image,
-  } = useControls(
-    {
-      image: { image: undefined },
-      maxColors: { value: 8, min: 1, max: 20, step: 1 },
-      ignoreColor: { value: { r: 0, g: 0, b: 0 } },
-      ignoreHueDifference: { value: 10, min: 0, max: 360, step: 1 },
-      ignoreSaturationDifference: { value: 10, min: 0, max: 100, step: 1 },
-      ignoreBrightnessDifference: { value: 10, min: 0, max: 100, step: 1 },
-      hueWeight: { value: 1, min: 0, max: 10, step: 0.1 },
-      saturationWeight: { value: 1, min: 0, max: 10, step: 0.1 },
-      brightnessWeight: { value: 1, min: 0, max: 10, step: 0.1 },
-    },
-    {
-      collapsed: true,
-    }
-  ) as any;
-  useEffect(() => {
-    settingsStore.maxColors = maxColors;
-    settingsStore.ignoreColor = ignoreColor;
-    settingsStore.ignoreHueDifference = ignoreHueDifference;
-    settingsStore.ignoreSaturationDifference = ignoreSaturationDifference;
-    settingsStore.ignoreBrightnessDifference = ignoreBrightnessDifference;
-    settingsStore.hueWeight = hueWeight;
-    settingsStore.saturationWeight = saturationWeight;
-    settingsStore.brightnessWeight = brightnessWeight;
-  }, [maxColors, ignoreColor, hueWeight, saturationWeight, brightnessWeight]);
-
+  return <ThreeCanvas />;
   return (
     <>
       <PageWrapper>
@@ -279,13 +213,7 @@ export default function Home() {
           )}
         </UploadArea> */}
         {/* <GhostCanvasWrapper */}
-        {imageRef && (
-          <GhostCanvas
-            // loaded={loaded}
-            imageSrc={image}
-            // name={imageToUse?.name}
-          ></GhostCanvas>
-        )}
+
         {/* <div></div> */}
         {/* </TwoColumnWrapper> */}
       </PageWrapper>
@@ -303,7 +231,7 @@ const GhostCanvasWrapper = styled.div`
   visibility: hidden;
 `;
 
-function GhostCanvas({ imageSrc }: GhostCanvasProps) {
+export function GhostCanvas({ imageSrc }: GhostCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 

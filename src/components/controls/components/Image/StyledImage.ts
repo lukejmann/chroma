@@ -1,14 +1,15 @@
-import { styled } from "../../styles";
+import { styled as s1 } from "../../styles";
+import styled from "styled-components/macro";
 
-export const ImageContainer = styled("div", {
+export const ImageContainer = s1("div", {
   position: "relative",
   display: "grid",
-  gridTemplateColumns: "$sizes$rowHeight auto 20px",
+  gridTemplateColumns: "$sizes$imageRowHeight auto 20px",
   columnGap: "$colGap",
   alignItems: "center",
 });
 
-export const DropZone = styled("div", {
+export const DropZone = s1("div", {
   $flexCenter: "",
   overflow: "hidden",
   height: "$rowHeight",
@@ -33,7 +34,7 @@ export const DropZone = styled("div", {
   },
 });
 
-export const ImagePreview = styled("div", {
+export const ImagePreview = s1("div", {
   boxSizing: "border-box",
   borderRadius: "$sm",
   height: "$rowHeight",
@@ -48,25 +49,13 @@ export const ImagePreview = styled("div", {
   },
 });
 
-export const ImageLargePreview = styled("div", {
-  $flexCenter: "",
-  width: "$imagePreviewWidth",
-  height: "$imagePreviewHeight",
-  borderRadius: "$sm",
-  boxShadow: "$level2",
-  pointerEvents: "none",
-  $inputStyle: "",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-});
-
-export const Instructions = styled("div", {
+export const Instructions = s1("div", {
   fontSize: "0.8em",
   height: "100%",
   padding: "$rowGap $md",
 });
 
-export const Remove = styled("div", {
+export const Remove = s1("div", {
   $flexCenter: "",
   top: "0",
   right: "0",

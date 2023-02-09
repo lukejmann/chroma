@@ -93,6 +93,8 @@ export type ControlsRootProps = {
    * If true, the copy button will be hidden
    */
   hideCopyButton?: boolean;
+
+  collapsable?: boolean;
 };
 
 export function ControlsRoot({
@@ -158,11 +160,12 @@ const ControlsCore = React.memo(
       title: undefined,
       drag: true,
       filter: true,
-      position: undefined,
+      position: { x: 30, y: 30 },
       onDrag: undefined,
       onDragStart: undefined,
       onDragEnd: undefined,
     },
+    collapsable = false,
     hideCopyButton = false,
     toggled,
     setToggle,
@@ -217,6 +220,7 @@ const ControlsCore = React.memo(
                 set(point);
                 onDrag?.(point);
               }}
+              collapsable={collapsable}
               onDragStart={(point) => onDragStart?.(point)}
               onDragEnd={(point) => onDragEnd?.(point)}
               setFilter={setFilter}

@@ -12,6 +12,8 @@ const HeaderFrame = styled.div<{ showBackground: boolean }>`
   justify-content: space-between;
   padding: 12px;
   gap: 7px;
+  z-index: 100;
+  background: transparent;
 `;
 
 const LogoText = styled.div`

@@ -56,7 +56,8 @@ export const StyledFilterInput = styled("input", {
   height: 30,
   width: "100%",
   backgroundColor: "transparent",
-  fontSize: "10px",
+  fontSize: "12px",
+
   borderRadius: "$root",
   "&:focus": {},
   "&::placeholder": {
@@ -72,6 +73,7 @@ export const TitleContainer = styled("div", {
     fill: "$highlight1",
   },
   color: "$highlight1",
+  fontWeight: "700",
   variants: {
     drag: {
       true: {

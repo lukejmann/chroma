@@ -1,78 +1,86 @@
 import { createStitches } from "@stitches/react";
+import { useTheme } from "styled-components/macro";
+import { colors } from "theme";
+import { transparentize } from "polished";
 
-export const getDefaultTheme = () => ({
-  colors: {
-    econtrolstion1: "#292d39", // bg color of the root panel (main title bar)
-    econtrolstion2: "#181c20", // bg color of the rows (main panel color)
-    econtrolstion3: "#373c4b", // bg color of the inputs
-    accent1: "#0066dc",
-    accent2: "#007bff",
-    accent3: "#3c93ff",
-    highlight1: "#535760",
-    highlight2: "#8c92a4",
-    highlight3: "#fefefe",
-    vivid1: "#ffcc00",
-    folderWidgetColor: "$highlight2",
-    folderTextColor: "$highlight3",
-    toolTipBackground: "$highlight3",
-    toolTipText: "$econtrolstion2",
-  },
-  radii: {
-    xs: "2px",
-    sm: "3px",
-    lg: "10px",
-  },
-  space: {
-    xs: "3px",
-    sm: "6px",
-    md: "10px",
-    rowGap: "7px",
-    colGap: "7px",
-  },
-  fonts: {
-    mono: `ui-monospace, SFMono-Regular, Menlo, 'Roboto Mono', monospace`,
-    sans: `system-ui, sans-serif`,
-  },
-  fontSizes: {
-    root: "11px",
-    toolTip: "$root",
-  },
-  sizes: {
-    rootWidth: "280px",
-    controlWidth: "160px",
-    numberInputMinWidth: "38px",
-    scrubberWidth: "8px",
-    scrubberHeight: "16px",
-    rowHeight: "24px",
-    folderTitleHeight: "20px",
-    checkboxSize: "16px",
-    joystickWidth: "100px",
-    joystickHeight: "100px",
-    colorPickerWidth: "$controlWidth",
-    colorPickerHeight: "100px",
-    imagePreviewWidth: "$controlWidth",
-    imagePreviewHeight: "100px",
-    monitorHeight: "60px",
-    titleBarHeight: "39px",
-  },
-  shadows: {
-    level1: "0 0 9px 0 #00000088",
-    level2: "0 4px 14px #00000033",
-  },
-  borderWidths: {
-    root: "0px",
-    input: "1px",
-    focus: "1px",
-    hover: "1px",
-    active: "1px",
-    folder: "1px",
-  },
-  fontWeights: {
-    label: "normal",
-    folder: "normal",
-    button: "normal",
-  },
-});
+export const getDefaultTheme = () => {
+  // const theme = darkm
+  const c = colors(false);
+  return {
+    colors: {
+      econtrolstion1: transparentize(0.1, c.bg1), // bg color of the folders
+      econtrolstion2: c.bg1, // bg color of the rows (main panel color)
+      econtrolstion3: c.bg2, // bg color of the inputs
+      accent1: c.primary1,
+      accent2: c.primary2,
+      accent3: c.primary4,
+      highlight1: c.text3,
+      highlight2: c.text2,
+      highlight3: c.text1,
+      vivid1: c.yellow1,
+      folderWidgetColor: "$highlight2",
+      folderTextColor: "$highlight3",
+      toolTipBackground: "$highlight3",
+      toolTipText: "$econtrolstion2",
+    },
+    radii: {
+      xs: "6px",
+      sm: "8px",
+      lg: "12px",
+    },
+    space: {
+      xs: "3px",
+      sm: "6px",
+      md: "10px",
+      rowGap: "7px",
+      colGap: "7px",
+    },
+    fonts: {
+      mono: `ui-mono, SFMono-Regular, Menlo, 'Roboto Mono', monospace`,
+      sans: `Satoshi, sans-serif`,
+    },
+    fontSizes: {
+      root: "12px",
+      toolTip: "$root",
+    },
+    sizes: {
+      rootWidth: "280px",
+      controlWidth: "160px",
+      numberInputMinWidth: "38px",
+      scrubberWidth: "8px",
+      scrubberHeight: "16px",
+      rowHeight: "24px",
+      imageRowHeight: "200px",
+      folderTitleHeight: "20px",
+      checkboxSize: "16px",
+      joystickWidth: "100px",
+      joystickHeight: "100px",
+      colorPickerWidth: "$controlWidth",
+      colorPickerHeight: "100px",
+      imagePreviewWidth: "$controlWidth",
+      imagePreviewHeight: "400px",
+      monitorHeight: "60px",
+      titleBarHeight: "39px",
+    },
+    shadows: {
+      level1: "0 4px 12px 0 rgba(0,0,0,0.2)",
+      level2: "0 4px 14px #00000033",
+    },
+    borderWidths: {
+      root: "0px",
+      input: "1px",
+      focus: "1px",
+      hover: "1px",
+      active: "1px",
+      folder: "1px",
+    },
+    fontWeights: {
+      label: "normal",
+      folder: "normal",
+      button: "normal",
+    },
+  };
+};
 
 export type FullTheme = ReturnType<typeof getDefaultTheme>;
 export type ControlsCustomTheme = Partial<{

@@ -1,4 +1,6 @@
 import React, { createContext, useContext } from "react";
+import { useTheme } from "styled-components/macro";
+import ThemeProvider, { ThemedGlobalStyle } from "theme";
 import type { FullTheme } from "./styles";
 import type { StoreType, PanelSettingsType, InputContextProps } from "./types";
 
@@ -35,7 +37,15 @@ export function ControlsStoreProvider({
   children,
   store,
 }: ControlsStoreProviderProps) {
+  const theme = useTheme();
   return (
-    <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+    <ThemeProvider>
+      <ThemedGlobalStyle />
+      {/* <App /> */}
+
+      <StoreContext.Provider value={store}>
+        {children as any}
+      </StoreContext.Provider>
+    </ThemeProvider>
   );
 }

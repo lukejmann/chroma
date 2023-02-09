@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { RGBELoader } from "three-stdlib";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import {
@@ -16,6 +16,13 @@ import {
 import { proxy, useSnapshot } from "valtio";
 import styled, { useTheme } from "styled-components/macro";
 import { MathUtils, MeshBasicMaterial } from "three";
+import {
+  Controls,
+  ControlsPanel,
+  folder,
+  useControls,
+  useCreateStore,
+} from "components/controls";
 
 const RGBToHSB = (r: number, g: number, b: number) => {
   r /= 255;
@@ -254,10 +261,100 @@ export const canvasStore = proxy({
 export const ThreeCanvas = ({}) => {
   const { dots } = useSnapshot(canvasStore);
 
+  const imageStore = useCreateStore();
+  const settingsStore2 = useCreateStore();
+
+  const {
+    maxColors,
+    ignoreColor,
+    ignoreHueDifference,
+    ignoreSaturationDifference,
+    ignoreBrightnessDifference,
+    hueWeight,
+    saturationWeight,
+    brightnessWeight,
+  } = useControls(
+    {
+      maxColors: { value: 8, min: 1, max: 20, step: 1 },
+      ignoreColor: { value: { r: 0, g: 0, b: 0 } },
+      ignoreHueDifference: { value: 10, min: 0, max: 360, step: 1 },
+      ignoreSaturationDifference: { value: 10, min: 0, max: 100, step: 1 },
+      ignoreBrightnessDifference: { value: 10, min: 0, max: 100, step: 1 },
+      hueWeight: { value: 1, min: 0, max: 10, step: 0.1 },
+      saturationWeight: { value: 1, min: 0, max: 10, step: 0.1 },
+      brightnessWeight: { value: 1, min: 0, max: 10, step: 0.1 },
+    },
+    { store: settingsStore2 }
+  ) as any;
+  useEffect(() => {
+    settingsStore.maxColors = maxColors;
+    settingsStore.ignoreColor = ignoreColor;
+    settingsStore.ignoreHueDifference = ignoreHueDifference;
+    settingsStore.ignoreSaturationDifference = ignoreSaturationDifference;
+    settingsStore.ignoreBrightnessDifference = ignoreBrightnessDifference;
+    settingsStore.hueWeight = hueWeight;
+    settingsStore.saturationWeight = saturationWeight;
+    settingsStore.brightnessWeight = brightnessWeight;
+  }, [
+    maxColors,
+    ignoreColor,
+    hueWeight,
+    saturationWeight,
+    brightnessWeight,
+    ignoreHueDifference,
+    ignoreSaturationDifference,
+    ignoreBrightnessDifference,
+  ]);
+
+  const { image } = useControls(
+    {
+      image: { image: undefined },
+    },
+    { store: imageStore }
+  );
+
   return (
     <CanvasWrapper>
+      {/* <Leva theme={theme} /> */}
+      <div
+        style={{
+          position: "absolute",
+          top: 100,
+          left: 0,
+          display: "grid",
+          width: 300,
+          gap: 200,
+          paddingBottom: 40,
+          marginRight: 10,
+          float: "left",
+          // background: "#181C20",
+        }}
+      >
+        <ControlsPanel
+          titleBar={{
+            title: "Settings",
+            filter: false,
+            position: { x: 0, y: 400 },
+          }}
+          collapsable={true}
+          store={settingsStore2}
+        />
+        <ControlsPanel store={imageStore} />
+        {/* <LevaPanel fill flat titleBar={false} store={spaceStore} />
+        <LevaPanel fill flat titleBar={false} store={fontSizesStore} />
+        <LevaPanel fill flat titleBar={false} store={sizesStore} />
+        <LevaPanel fill flat titleBar={false} store={borderWidthsStore} />
+        <LevaPanel fill flat titleBar={false} store={fontWeightsStore} /> */}
+      </div>
       <CanvasMain dots={[...dots]} />
       <DotsUpdater />
+      {image && (
+        <GhostCanvas
+          // loaded={loaded}
+          imageSrc={image}
+          // name={imageToUse?.name}
+        ></GhostCanvas>
+      )}
     </CanvasWrapper>
   );
 };
@@ -286,11 +383,11 @@ const CanvasMain = ({ dots }: { dots: Dot[] }) => {
       <OrbitControls
         autoRotate
         autoRotateSpeed={0.1}
-        // enablePan={false}
-        // enableZoom={false}
+        enablePan={false}
+        enableZoom={false}
         dampingFactor={0.05}
-        // minPolarAngle={Math.PI / 3}
-        // maxPolarAngle={Math.PI / 3}
+        minPolarAngle={Math.PI / 3}
+        maxPolarAngle={Math.PI / 3}
       />
     </Canvas>
   );
@@ -321,10 +418,6 @@ function Dots({ dots }: { dots: Dot[] }) {
 function Dot({ dot }: { dot: Dot }) {
   const ref = useRef<any>();
   const position = useMemo(() => {
-    // calculate xy from the hue and saturation
-    // hue is 0-255, saturation is 0-100
-    // center of the circle is 0.5, 0.5
-    // radius is 0.5
     console.log("hue", dot.hue);
     console.log("saturation", dot.saturation);
     const x = dot.hue / 255;
@@ -332,14 +425,10 @@ function Dot({ dot }: { dot: Dot }) {
     const y = dot.saturation / 100;
     console.log("y", y);
     const r = 0.5;
-    // hue should be the polar angle
-    // saturation should be the distance from the center
-    // const theta = Math.atan2(y - 0.5, x - 0.5);
     const theta = Math.atan2(y - 0.5, x - 0.5);
     console.log("theta", theta);
     const newX = r * Math.cos(theta) * 10;
     const newY = r * Math.sin(theta) * 10;
-
     // brightness is the z
     const newZ = 1 + (5 * dot.brightness) / 100;
 
@@ -426,3 +515,80 @@ const Shadows = memo(() => (
     />
   </AccumulativeShadows>
 ));
+
+interface GhostCanvasProps {
+  imageSrc?: string;
+}
+
+const GhostCanvasWrapper = styled.div`
+  z-index: -1;
+  visibility: hidden;
+`;
+
+function GhostCanvas({ imageSrc }: GhostCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  const onLoad = useCallback(() => {
+    console.log("image loaded 2");
+    const image = imageRef.current;
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      console.log("no canvas");
+      return;
+    }
+    if (!image) {
+      console.log("no image");
+      return;
+    }
+    canvas.height = image.naturalHeight || image.offsetHeight || image.height;
+    canvas.width = image.naturalWidth || image.offsetWidth || image.width;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx) {
+      console.log("no ctx");
+      return;
+    }
+    ctx.drawImage(image, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    // console.log("data", data);
+    const rgbaData: RGBADatapoint[] = [];
+    // if data.length > 12000, then we select 3000 random points
+    const numPoints = data.length / 4;
+    const numPointsToSample = Math.min(3000, numPoints);
+    // must be multiple of 4
+    const stepSize =
+      Math.floor(numPoints / numPointsToSample) -
+      (Math.floor(numPoints / numPointsToSample) % 4);
+    // console.log("stepSize", stepSize);
+    for (let i = 0; i < numPoints; i += stepSize) {
+      const index = i * 4;
+      const r = data[index];
+      const g = data[index + 1];
+      const b = data[index + 2];
+      const a = data[index + 3];
+      rgbaData.push({ r, g, b, a });
+    }
+    canvasStore.rgbaDatas = rgbaData;
+    console.log("rgbaData", rgbaData);
+  }, [imageSrc]);
+
+  // console.log("loaded", loaded);
+
+  // useEffect(() => {
+  //   console.log("image changed");
+  //   if (!image) {
+  //     return;
+  //   }
+  //   if (loaded && image.complete) {
+  //     onLoad();
+  //   }
+  // }, [image?.complete, loaded]);
+
+  return (
+    <GhostCanvasWrapper>
+      <img onLoad={onLoad} src={imageSrc} ref={imageRef} />
+      <canvas ref={canvasRef} />
+    </GhostCanvasWrapper>
+  );
+}

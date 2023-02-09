@@ -12,8 +12,8 @@ export const StyledRoot = styled("div", {
     fill: {
       false: {
         position: "fixed",
-        top: "10px",
-        right: "10px",
+        top: "40px",
+        left: "10px",
         zIndex: 1000,
         width: "$rootWidth",
       },
