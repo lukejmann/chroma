@@ -1,4 +1,6 @@
 import { AutoColumn } from "components/Column";
+import { useControls } from "components/leva";
+// import { useControls } from "leva";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { ArrowRight } from "react-feather";
@@ -8,7 +10,12 @@ import { useIsDarkMode } from "state/user/hooks";
 import styled from "styled-components/macro";
 import { IconWrapper } from "theme";
 import { proxy, useSnapshot, subscribe } from "valtio";
-import { canvasStore, RGBADatapoint, ThreeCanvas } from "./Three";
+import {
+  canvasStore,
+  RGBADatapoint,
+  settingsStore,
+  ThreeCanvas,
+} from "./Three";
 
 export const TextStandard = styled(Text)`
   font-family: "Satoshi", sans-serif;
@@ -29,7 +36,7 @@ export const PageWrapper = styled.main<{ margin?: string; maxWidth?: string }>`
   max-width: ${({ maxWidth }) => maxWidth ?? "510px"};
   width: 100%;
   margin-top: 1rem;
-  margin-left: auto;
+  // margin-left: auto;
   margin-right: auto;
   width: 100%;
   max-width: 940px;
@@ -37,16 +44,16 @@ export const PageWrapper = styled.main<{ margin?: string; maxWidth?: string }>`
   z-index: 1;
 `;
 
-const TwoColumnWrapper = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  height: 100%;
-  background-color: ${({ theme }) => theme.bg4};
-`;
+// const TwoColumnWrapper = styled.div`
+//   display: flex;
+//   flex-direction: row;
+//   align-items: flex-start;
+//   justify-content: space-between;
+//   gap: 1rem;
+//   width: 100%;
+//   height: 100%;
+//   background-color: ${({ theme }) => theme.bg4};
+// `;
 
 enum UploadStatus {
   Empty,
@@ -58,7 +65,7 @@ enum UploadStatus {
 const UploadArea = styled.div<{ status: UploadStatus }>`
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center
   justify-content: center;
   height: 100%;
   width: 450px !important;
@@ -197,48 +204,89 @@ export default function Home() {
     files.forEach((file) => URL.revokeObjectURL((file as any).preview));
   }, [files]);
 
-  const imageToUse = files.length > 0 ? files[0] : undefined;
+  // const imageToUse = files.length > 0 ? files[0] : undefined;
 
   const imageRef = useRef<HTMLImageElement>(null);
 
   const [rgbaDatas, setRgbData] = useState([] as RGBADatapoint[]);
 
+  // const [loaded, setLoaded] = useState(false);
+
+  const {
+    maxColors,
+    ignoreColor,
+    ignoreHueDifference,
+    ignoreSaturationDifference,
+    ignoreBrightnessDifference,
+    hueWeight,
+    saturationWeight,
+    brightnessWeight,
+    image,
+  } = useControls(
+    {
+      image: { image: undefined },
+      maxColors: { value: 8, min: 1, max: 20, step: 1 },
+      ignoreColor: { value: { r: 0, g: 0, b: 0 } },
+      ignoreHueDifference: { value: 10, min: 0, max: 360, step: 1 },
+      ignoreSaturationDifference: { value: 10, min: 0, max: 100, step: 1 },
+      ignoreBrightnessDifference: { value: 10, min: 0, max: 100, step: 1 },
+      hueWeight: { value: 1, min: 0, max: 10, step: 0.1 },
+      saturationWeight: { value: 1, min: 0, max: 10, step: 0.1 },
+      brightnessWeight: { value: 1, min: 0, max: 10, step: 0.1 },
+    },
+    {
+      collapsed: true,
+    }
+  ) as any;
+  useEffect(() => {
+    settingsStore.maxColors = maxColors;
+    settingsStore.ignoreColor = ignoreColor;
+    settingsStore.ignoreHueDifference = ignoreHueDifference;
+    settingsStore.ignoreSaturationDifference = ignoreSaturationDifference;
+    settingsStore.ignoreBrightnessDifference = ignoreBrightnessDifference;
+    settingsStore.hueWeight = hueWeight;
+    settingsStore.saturationWeight = saturationWeight;
+    settingsStore.brightnessWeight = brightnessWeight;
+  }, [maxColors, ignoreColor, hueWeight, saturationWeight, brightnessWeight]);
+
   return (
     <>
       <PageWrapper>
-        <TwoColumnWrapper>
-          <UploadArea
-            status={chromaStore.uploadStatus}
-            // onDrop={handleDrop}
-            // // onDropCapture={handleDrop}
-            // onDragOver={handleDragOver}
-            {...getRootProps({ refKey: "innerRef" })}
-          >
-            <input {...getInputProps()} />
-            {imageToUse == undefined ? (
-              <AutoColumn>
-                <div>Drag and drop files here</div>
-                <div>or</div>
-                <div>click to select files</div>
-              </AutoColumn>
-            ) : (
-              <AutoColumn>
-                <ImagePreview
-                  ref={imageRef}
-                  src={(imageToUse as any).preview}
-                />
-              </AutoColumn>
-            )}
-          </UploadArea>
-          {/* <GhostCanvasWrapper */}
-          {imageRef?.current && (
-            <GhostCanvas
-              image={imageRef.current}
-              name={imageToUse?.name}
-            ></GhostCanvas>
+        {/* <TwoColumnWrapper> */}
+        {/* <UploadArea
+          status={chromaStore.uploadStatus}
+          // onDrop={handleDrop}
+          // // onDropCapture={handleDrop}
+          // onDragOver={handleDragOver}
+          {...getRootProps({ refKey: "innerRef" })}
+        >
+          <input {...getInputProps()} />
+          {image == undefined ? (
+            <AutoColumn>
+              <div>Drag and drop files here</div>
+              <div>or</div>
+              <div>click to select files</div>
+            </AutoColumn>
+          ) : (
+            <AutoColumn>
+              <ImagePreview
+                onLoad={() => setLoaded(true)}
+                ref={imageRef}
+                src={(imageToUse as any).preview}
+              />
+            </AutoColumn>
           )}
-          <div></div>
-        </TwoColumnWrapper>
+        </UploadArea> */}
+        {/* <GhostCanvasWrapper */}
+        {imageRef && (
+          <GhostCanvas
+            // loaded={loaded}
+            imageSrc={image}
+            // name={imageToUse?.name}
+          ></GhostCanvas>
+        )}
+        {/* <div></div> */}
+        {/* </TwoColumnWrapper> */}
       </PageWrapper>
       <ThreeCanvas></ThreeCanvas>
     </>
@@ -246,10 +294,7 @@ export default function Home() {
 }
 
 interface GhostCanvasProps {
-  image: HTMLImageElement;
-  // array of rgba datapoints representing the image
-  // setRGBA: (rgba: RGBADatapoint[]) => void;
-  name: string;
+  imageSrc?: string;
 }
 
 const GhostCanvasWrapper = styled.div`
@@ -257,19 +302,27 @@ const GhostCanvasWrapper = styled.div`
   visibility: hidden;
 `;
 
-function GhostCanvas({ image, name }: GhostCanvasProps) {
+function GhostCanvas({ imageSrc }: GhostCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   const onLoad = useCallback(() => {
-    console.log("image loaded");
+    console.log("image loaded 2");
+    const image = imageRef.current;
     const canvas = canvasRef.current;
     if (!canvas) {
+      console.log("no canvas");
+      return;
+    }
+    if (!image) {
+      console.log("no image");
       return;
     }
     canvas.height = image.naturalHeight || image.offsetHeight || image.height;
     canvas.width = image.naturalWidth || image.offsetWidth || image.width;
     const ctx = canvas?.getContext("2d");
     if (!ctx) {
+      console.log("no ctx");
       return;
     }
     ctx.drawImage(image, 0, 0);
@@ -295,14 +348,23 @@ function GhostCanvas({ image, name }: GhostCanvasProps) {
     }
     canvasStore.rgbaDatas = rgbaData;
     console.log("rgbaData", rgbaData);
-  }, []);
+  }, [imageSrc]);
 
-  useEffect(() => {
-    image.onload = onLoad;
-  }, [name]);
+  // console.log("loaded", loaded);
+
+  // useEffect(() => {
+  //   console.log("image changed");
+  //   if (!image) {
+  //     return;
+  //   }
+  //   if (loaded && image.complete) {
+  //     onLoad();
+  //   }
+  // }, [image?.complete, loaded]);
 
   return (
     <GhostCanvasWrapper>
+      <img onLoad={onLoad} src={imageSrc} ref={imageRef} />
       <canvas ref={canvasRef} />
     </GhostCanvasWrapper>
   );

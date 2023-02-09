@@ -10,10 +10,13 @@ import {
   Text3D,
   Center,
   useFBO,
+  MeshTransmissionMaterial,
+  Edges,
 } from "@react-three/drei";
 import { proxy, useSnapshot } from "valtio";
-import styled from "styled-components/macro";
-import { MathUtils } from "three";
+import styled, { useTheme } from "styled-components/macro";
+import { MathUtils, MeshBasicMaterial } from "three";
+import { useControls } from "leva";
 
 const RGBToHSB = (r: number, g: number, b: number) => {
   r /= 255;
@@ -32,6 +35,28 @@ const RGBToHSB = (r: number, g: number, b: number) => {
   return [60 * (h < 0 ? h + 6 : h), v && (n / v) * 100, v * 100];
 };
 
+const HSBToRGB = (h: number, s: number, b: number) => {
+  s /= 100;
+  b /= 100;
+  const k = (n: number) => (n + h / 60) % 6;
+  const f = (n: number) =>
+    b * (1 - s * Math.max(0, Math.min(k(n), 4 - k(n), 1)));
+  return [255 * f(5), 255 * f(3), 255 * f(1)];
+};
+
+function hslToHex(h: number, s: number, l: number) {
+  console.log(`hslToHex(${h}, ${s}, ${l})`);
+  l /= 100;
+  const a = (s * Math.min(l, 1 - l)) / 100;
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, "0"); // convert to Hex and prefix "0" if needed
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
 export interface RGBADatapoint {
   r: number;
   g: number;
@@ -47,25 +72,11 @@ export interface HSBDatapoint {
 
 interface Dot {
   size: number;
-  colorHex: string;
+  colorRgb: string;
   hue: number;
   saturation: number;
   brightness: number;
 }
-
-export const settingsStore = proxy({
-  maxColors: 8,
-  ignoreColor: undefined as string | undefined,
-  hueWeight: 1,
-  saturationWeight: 1,
-  brightnessWeight: 1,
-});
-
-export const canvasStore = proxy({
-  rgbaDatas: [] as RGBADatapoint[],
-  hsbDatas: [] as HSBDatapoint[],
-  dots: [] as Dot[],
-});
 
 // the purpose of this component is to update the dots in the scene based on rgba data
 // rgba data should be reduced to a set of colors that are used to create the dots
@@ -89,62 +100,125 @@ const DotsUpdater = ({}: {}) => {
   //   the clusters are then calculated based on the hsb values
   //   we create clusters based on the hue, saturation, and brightness values (hue*hueWeight + saturation*saturationWeight + brightness*brightnessWeight)
 
+  //   size should be proportional to the number of pixels in the cluster
+  //   color should be the average of the colors in the cluster
+
   const { hsbDatas } = useSnapshot(canvasStore);
   const {
     maxColors,
     ignoreColor,
+    ignoreHueDifference,
+    ignoreSaturationDifference,
+    ignoreBrightnessDifference,
     hueWeight,
     saturationWeight,
     brightnessWeight,
   } = useSnapshot(settingsStore);
   useEffect(() => {
-    const clusters = hsbDatas.reduce((clusters, hsbData) => {
+    const totalPixels = hsbDatas.length;
+    // using k-means clustering
+
+    const { r: rIgnore, g: gIgnore, b: bIgnore } = { ...ignoreColor };
+    const [ignoreHue, ignoreSaturation, ignoreBrightness] = RGBToHSB(
+      rIgnore,
+      gIgnore,
+      bIgnore
+    );
+
+    // remove colors that are too similar to the ignore color
+    const hsbDatasFiltered = hsbDatas.filter((hsbData) => {
+      const { h, s, b: b2 } = hsbData;
+      const hueDifference = Math.abs(h - ignoreHue);
+      const saturationDifference = Math.abs(s - ignoreSaturation);
+      const brightnessDifference = Math.abs(b2 - ignoreBrightness);
+      return (
+        hueDifference > ignoreHueDifference ||
+        saturationDifference > ignoreSaturationDifference ||
+        brightnessDifference > ignoreBrightnessDifference
+      );
+    });
+
+    const clusters = hsbDatasFiltered.reduce((acc, hsbData) => {
       const { h, s, b } = hsbData;
       const hue = h * hueWeight;
       const saturation = s * saturationWeight;
       const brightness = b * brightnessWeight;
-      const cluster = hue + saturation + brightness;
-      if (clusters[cluster]) {
-        clusters[cluster].push(hsbData);
-      } else {
-        clusters[cluster] = [hsbData];
-      }
-      return clusters;
-    }, {} as Record<string, HSBDatapoint[]>);
-    const sortedClusters = Object.entries(clusters)
-      .sort((a, b) => b[1].length - a[1].length)
-      .slice(0, maxColors);
-    const dots = sortedClusters.map((cluster) => {
-      const { h, s, b } = cluster[1].reduce(
-        (acc, hsbData) => {
-          acc.h += hsbData.h;
-          acc.s += hsbData.s;
-          acc.b += hsbData.b;
-          return acc;
-        },
-        { h: 0, s: 0, b: 0 }
+      const clusterIndex = acc.findIndex(
+        (cluster) =>
+          Math.abs(cluster.hue - hue) < 10 &&
+          Math.abs(cluster.saturation - saturation) < 10 &&
+          Math.abs(cluster.brightness - brightness) < 10
       );
-      const size = cluster[1].length;
-      const colorHex = `hsl(${h / size}, ${s / size}%, ${b / size}%)`;
-      return {
-        size,
-        colorHex,
-        hue: h / size,
-        saturation: s / size,
-        brightness: b / size,
-      };
+      if (clusterIndex === -1) {
+        acc.push({
+          hue,
+          saturation,
+          brightness,
+          pixels: [hsbData],
+        });
+      } else {
+        acc[clusterIndex].pixels.push(hsbData);
+      }
+      return acc;
+    }, [] as { hue: number; saturation: number; brightness: number; pixels: HSBDatapoint[] }[]);
+    // sort clusters by size
+    clusters.sort((a, b) => b.pixels.length - a.pixels.length);
+    // remove clusters that are too small
+    const clustersFiltered = clusters.filter(
+      (cluster) => cluster.pixels.length / totalPixels > 0.01
+    );
+    // remove clusters that are too similar
+    const clustersFiltered2 = clustersFiltered.reduce((acc, cluster) => {
+      const { hue, saturation, brightness } = cluster;
+      const clusterIndex = acc.findIndex(
+        (cluster) =>
+          Math.abs(cluster.hue - hue) < 10 &&
+          Math.abs(cluster.saturation - saturation) < 10 &&
+          Math.abs(cluster.brightness - brightness) < 10
+      );
+      if (clusterIndex === -1) {
+        acc.push(cluster);
+      }
+      return acc;
+    }, [] as { hue: number; saturation: number; brightness: number; pixels: HSBDatapoint[] }[]);
+    // remove clusters that are too similar
+    const clustersFiltered3 = clustersFiltered2.reduce((acc, cluster) => {
+      const { hue, saturation, brightness } = cluster;
+      const clusterIndex = acc.findIndex(
+        (cluster) =>
+          Math.abs(cluster.hue - hue) < 10 &&
+          Math.abs(cluster.saturation - saturation) < 10 &&
+          Math.abs(cluster.brightness - brightness) < 10
+      );
+      if (clusterIndex === -1) {
+        acc.push(cluster);
+      }
+      return acc;
+    }, [] as { hue: number; saturation: number; brightness: number; pixels: HSBDatapoint[] }[]);
+
+    const dots = clustersFiltered3.map((cluster) => {
+      const { hue, saturation, brightness, pixels } = cluster;
+      const size = pixels.length;
+      const colorRgb = hslToHex(hue, saturation, brightness);
+      return { size, colorRgb, hue, saturation, brightness };
     });
+
+    // remove ignoreColor
+
     canvasStore.dots = dots;
-    console.log(dots);
   }, [
     hsbDatas,
     maxColors,
     ignoreColor,
+    ignoreHueDifference,
+    ignoreSaturationDifference,
+    ignoreBrightnessDifference,
     hueWeight,
     saturationWeight,
     brightnessWeight,
   ]);
-  return <></>;
+
+  return null;
 };
 
 const CanvasWrapper = styled.div`
@@ -157,10 +231,30 @@ const CanvasWrapper = styled.div`
   overflow: hidden;
 `;
 
+const initalSettings = {
+  maxColors: 8,
+  ignoreColor: { r: 0, g: 0, b: 0 } as { r: number; g: number; b: number },
+  ignoreHueDifference: 10,
+  ignoreSaturationDifference: 10,
+  ignoreBrightnessDifference: 10,
+  hueWeight: 1,
+  saturationWeight: 1,
+  brightnessWeight: 1,
+};
+
+export const settingsStore = proxy({
+  ...initalSettings,
+});
+
+export const canvasStore = proxy({
+  rgbaDatas: [] as RGBADatapoint[],
+  hsbDatas: [] as HSBDatapoint[],
+  dots: [] as Dot[],
+});
+
 export const ThreeCanvas = ({}) => {
   const { dots } = useSnapshot(canvasStore);
 
-  //   console.log("dotsCopy", dotsCopy);
   return (
     <CanvasWrapper>
       <CanvasMain dots={[...dots]} />
@@ -171,32 +265,33 @@ export const ThreeCanvas = ({}) => {
 
 const CanvasMain = ({ dots }: { dots: Dot[] }) => {
   console.log("dots", dots);
-  const testDots = [
-    {
-      size: 1,
-      colorHex: "hsl(0, 0%, 0%)",
-      hue: 0,
-      saturation: 0,
-      brightness: 0,
-    },
-  ];
+  //   const testDots = [
+  //     {
+  //       size: 56,
+  //       colorRgb: "#42f2f5",
+  //       hue: 208.57142857142873,
+  //       saturation: 12.574850299401195,
+  //       brightness: 65.49019607843137,
+  //     },
+  //   ];
+
   return (
     <Canvas shadows camera={{ fov: 30, position: [5, 17, 17] }}>
       <color attach="background" args={["#f2f2f5"]} />
       <fog attach="fog" args={["#f2f2f5", 35, 60]} />
-      <group position={[0, -1, 0]}>
+      <group position={[0, 0, 0]}>
         <Grid />
         <Shadows />
-        <Dots dots={testDots} />
+        <Dots dots={dots} />
       </group>
       <OrbitControls
         autoRotate
         autoRotateSpeed={0.1}
-        enablePan={false}
-        enableZoom={false}
+        // enablePan={false}
+        // enableZoom={false}
         dampingFactor={0.05}
-        minPolarAngle={Math.PI / 3}
-        maxPolarAngle={Math.PI / 3}
+        // minPolarAngle={Math.PI / 3}
+        // maxPolarAngle={Math.PI / 3}
       />
     </Canvas>
   );
@@ -215,36 +310,82 @@ function Dots({ dots }: { dots: Dot[] }) {
     }
   });
   return (
-    <Instances ref={ref} castShadow receiveShadow position={[0, 0, 0]}>
-      <sphereGeometry args={[1, 32, 32]} />
-      <meshStandardMaterial roughness={0} color="#f0f0f0" />
+    <group ref={ref} castShadow receiveShadow position={[0, 5, 0]}>
+      {/* <meshStandardMaterial roughness={0} color="#f0f0f0" /> */}
       {dots.map((dot, i) => (
         <Dot key={i} dot={dot} />
       ))}
-    </Instances>
+    </group>
   );
 }
 
 function Dot({ dot }: { dot: Dot }) {
   const ref = useRef<any>();
+  const position = useMemo(() => {
+    // calculate xy from the hue and saturation
+    // hue is 0-255, saturation is 0-100
+    // center of the circle is 0.5, 0.5
+    // radius is 0.5
+    console.log("hue", dot.hue);
+    console.log("saturation", dot.saturation);
+    const x = dot.hue / 255;
+    console.log("x", x);
+    const y = dot.saturation / 100;
+    console.log("y", y);
+    const r = 0.5;
+    // hue should be the polar angle
+    // saturation should be the distance from the center
+    // const theta = Math.atan2(y - 0.5, x - 0.5);
+    const theta = Math.atan2(y - 0.5, x - 0.5);
+    console.log("theta", theta);
+    const newX = r * Math.cos(theta) * 10;
+    const newY = r * Math.sin(theta) * 10;
+
+    // brightness is the z
+    const newZ = 1 + (5 * dot.brightness) / 100;
+
+    console.log(
+      `position mapped from h:${dot.hue} s:${dot.saturation} b:${dot.brightness} to x:${newX} y:${newY} z:${newZ}`
+    );
+
+    return [newX, newY, newZ];
+  }, [dot]);
+
+  const size = useMemo(() => {
+    return dot.size / 1000;
+  }, [dot]);
+
   useFrame((state) => {
     if (ref?.current) {
       //   const t = factor + state.clock.elapsedTime * (speed / 2);
       if (ref.current.scale) {
-        ref.current.scale.setScalar(1, 1, 1);
+        ref.current.scale.setScalar(
+          MathUtils.lerp(ref.current.scale.x, size, 0.1)
+        );
       }
-      ref.current.position.set(0, 0, -10);
-      console.log("ref.current", ref.current);
+      ref.current.position.set(
+        MathUtils.lerp(ref.current.position.x, position[0], 0.1),
+        MathUtils.lerp(ref.current.position.y, position[2], 0.1),
+        MathUtils.lerp(ref.current.position.z, position[1], 0.1)
+      );
+      //   console.log("ref.current", ref.current);
     }
   });
-  return <Instance ref={ref} />;
+  return (
+    <mesh ref={ref} userData={{ color: "blue" }}>
+      <sphereGeometry />
+
+      <meshBasicMaterial color={dot.colorRgb} depthTest={false} />
+    </mesh>
+  );
 }
 
 const Grid = ({ number = 23, lineWidth = 0.026, height = 0.5 }) => {
+  const theme = useTheme();
   return (
     <Instances castShadow receiveShadow position={[0, -1, 0]}>
       <planeGeometry args={[lineWidth, height]} />
-      <meshBasicMaterial color="#999" />
+      <meshBasicMaterial color={theme.bg2} />
       {Array.from({ length: number }, (_, y) =>
         Array.from({ length: number }, (_, x) => (
           <group
