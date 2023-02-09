@@ -1,6 +1,7 @@
 import { AutoColumn } from "components/Column";
-import { useControls } from "components/leva";
+import { useControls } from "components/controls";
 // import { useControls } from "leva";
+// import { useControls } from "controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { ArrowRight } from "react-feather";

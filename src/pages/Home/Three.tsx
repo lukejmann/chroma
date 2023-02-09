@@ -16,7 +16,6 @@ import {
 import { proxy, useSnapshot } from "valtio";
 import styled, { useTheme } from "styled-components/macro";
 import { MathUtils, MeshBasicMaterial } from "three";
-import { useControls } from "leva";
 
 const RGBToHSB = (r: number, g: number, b: number) => {
   r /= 255;
