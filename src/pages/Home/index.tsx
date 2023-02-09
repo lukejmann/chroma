@@ -86,9 +86,9 @@ const ImagePreview = styled.img`
   // should scale max width to 100% of parent
   // keep aspect ratio
   max-width: 100%;
-  max-height: 400px;
+  max-height: 300px;
   // max-height: 100%;
-  max-width: 400px;
+  max-width: 300px;
   object-fit: contain;
 
   border-radius: 18px;

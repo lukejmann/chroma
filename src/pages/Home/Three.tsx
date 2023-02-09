@@ -1,6 +1,14 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { RGBELoader } from "three-stdlib";
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import {
   Instances,
   Instance,
@@ -12,17 +20,22 @@ import {
   useFBO,
   MeshTransmissionMaterial,
   Edges,
+  GizmoHelper,
+  GizmoViewcube,
+  ContactShadows,
+  TransformControls,
+  useCursor,
 } from "@react-three/drei";
 import { proxy, useSnapshot } from "valtio";
 import styled, { useTheme } from "styled-components/macro";
-import { MathUtils, MeshBasicMaterial } from "three";
+import { MathUtils, MeshBasicMaterial, Vector3 } from "three";
 import {
-  Controls,
   ControlsPanel,
   folder,
   useControls,
   useCreateStore,
 } from "components/controls";
+import { transparentize } from "polished";
 
 const RGBToHSB = (r: number, g: number, b: number) => {
   r /= 255;
@@ -246,6 +259,13 @@ const initalSettings = {
   hueWeight: 1,
   saturationWeight: 1,
   brightnessWeight: 1,
+  radius: 0.5,
+  baseX: 0,
+  baseY: 0,
+  baseZ: 0,
+  xScale: 1,
+  yScale: 1,
+  zScale: 1,
 };
 
 export const settingsStore = proxy({
@@ -273,6 +293,13 @@ export const ThreeCanvas = ({}) => {
     hueWeight,
     saturationWeight,
     brightnessWeight,
+    radius,
+    baseX,
+    baseY,
+    baseZ,
+    xScale,
+    yScale,
+    zScale,
   } = useControls(
     {
       maxColors: { value: 8, min: 1, max: 20, step: 1 },
@@ -283,6 +310,13 @@ export const ThreeCanvas = ({}) => {
       hueWeight: { value: 1, min: 0, max: 10, step: 0.1 },
       saturationWeight: { value: 1, min: 0, max: 10, step: 0.1 },
       brightnessWeight: { value: 1, min: 0, max: 10, step: 0.1 },
+      radius: { value: 10.85, min: 0, max: 100, step: 0.01 },
+      baseX: { value: -10.82, min: -50, max: 50, step: 0.01 },
+      baseY: { value: 40.42, min: -50, max: 50, step: 0.01 },
+      baseZ: { value: 30.44, min: -50, max: 50, step: 0.01 },
+      xScale: { value: 30, min: 0, max: 50, step: 0.01 },
+      yScale: { value: 30, min: 0, max: 50, step: 0.01 },
+      zScale: { value: 30, min: 0, max: 50, step: 0.01 },
     },
     { store: settingsStore2 }
   ) as any;
@@ -295,6 +329,13 @@ export const ThreeCanvas = ({}) => {
     settingsStore.hueWeight = hueWeight;
     settingsStore.saturationWeight = saturationWeight;
     settingsStore.brightnessWeight = brightnessWeight;
+    settingsStore.radius = radius;
+    settingsStore.baseX = baseX;
+    settingsStore.baseY = baseY;
+    settingsStore.baseZ = baseZ;
+    settingsStore.xScale = xScale;
+    settingsStore.yScale = yScale;
+    settingsStore.zScale = zScale;
   }, [
     maxColors,
     ignoreColor,
@@ -304,11 +345,20 @@ export const ThreeCanvas = ({}) => {
     ignoreHueDifference,
     ignoreSaturationDifference,
     ignoreBrightnessDifference,
+    radius,
+    baseX,
+    baseY,
+    baseZ,
+    xScale,
+    yScale,
+    zScale,
   ]);
 
   const { image } = useControls(
     {
-      image: { image: undefined },
+      image: {
+        image: "http://localhost:5173/2232e0da-d3fa-4301-85f3-c2d6812611ac",
+      },
     },
     { store: imageStore }
   );
@@ -359,63 +409,11 @@ export const ThreeCanvas = ({}) => {
   );
 };
 
-const CanvasMain = ({ dots }: { dots: Dot[] }) => {
-  console.log("dots", dots);
-  //   const testDots = [
-  //     {
-  //       size: 56,
-  //       colorRgb: "#42f2f5",
-  //       hue: 208.57142857142873,
-  //       saturation: 12.574850299401195,
-  //       brightness: 65.49019607843137,
-  //     },
-  //   ];
+const state = proxy({ current: null, mode: 0 });
 
-  return (
-    <Canvas shadows camera={{ fov: 30, position: [5, 17, 17] }}>
-      <color attach="background" args={["#f2f2f5"]} />
-      <fog attach="fog" args={["#f2f2f5", 35, 60]} />
-      <group position={[0, 0, 0]}>
-        <Grid />
-        <Shadows />
-        <Dots dots={dots} />
-      </group>
-      <OrbitControls
-        autoRotate
-        autoRotateSpeed={0.1}
-        enablePan={false}
-        enableZoom={false}
-        dampingFactor={0.05}
-        minPolarAngle={Math.PI / 3}
-        maxPolarAngle={Math.PI / 3}
-      />
-    </Canvas>
-  );
-};
-
-function Dots({ dots }: { dots: Dot[] }) {
-  const ref = useRef<any>();
-  useFrame((state, delta) => {
-    if (ref?.current) {
-      void (ref.current.rotation.y = MathUtils.damp(
-        ref.current.rotation.y,
-        (-state.mouse.x * Math.PI) / 6,
-        2.75,
-        delta
-      ));
-    }
-  });
-  return (
-    <group ref={ref} castShadow receiveShadow position={[0, 5, 0]}>
-      {/* <meshStandardMaterial roughness={0} color="#f0f0f0" /> */}
-      {dots.map((dot, i) => (
-        <Dot key={i} dot={dot} />
-      ))}
-    </group>
-  );
-}
-
-function Dot({ dot }: { dot: Dot }) {
+function Model({ dot }: { dot: Dot }) {
+  const { radius, baseX, baseY, baseZ, xScale, yScale, zScale } =
+    useSnapshot(settingsStore);
   const ref = useRef<any>();
   const position = useMemo(() => {
     console.log("hue", dot.hue);
@@ -424,20 +422,20 @@ function Dot({ dot }: { dot: Dot }) {
     console.log("x", x);
     const y = dot.saturation / 100;
     console.log("y", y);
-    const r = 0.5;
-    const theta = Math.atan2(y - 0.5, x - 0.5);
+    const theta = Math.atan2(y - radius, x - radius);
     console.log("theta", theta);
-    const newX = r * Math.cos(theta) * 10;
-    const newY = r * Math.sin(theta) * 10;
+    const newX = baseX + radius * Math.cos(theta) * xScale;
+    const newY = baseY + radius * Math.sin(theta) * yScale;
+
     // brightness is the z
-    const newZ = 1 + (5 * dot.brightness) / 100;
+    const newZ = baseZ + (zScale * dot.brightness) / 100;
 
     console.log(
       `position mapped from h:${dot.hue} s:${dot.saturation} b:${dot.brightness} to x:${newX} y:${newY} z:${newZ}`
     );
 
     return [newX, newY, newZ];
-  }, [dot]);
+  }, [dot, radius, baseX, baseY, baseZ, xScale, yScale, zScale]);
 
   const size = useMemo(() => {
     return dot.size / 1000;
@@ -459,8 +457,35 @@ function Dot({ dot }: { dot: Dot }) {
       //   console.log("ref.current", ref.current);
     }
   });
+  // Ties this component to the state model
+  const snap = useSnapshot(state);
+  // Fetching the GLTF, nodes is a collection of all the meshes
+  // It's cached/memoized, it only gets loaded and parsed once
+  // Feed hover state into useCursor, which sets document.body.style.cursor to pointer|auto
+  const [hovered, setHovered] = useState(false);
+  useCursor(hovered);
   return (
-    <mesh ref={ref} userData={{ color: "blue" }}>
+    <mesh
+      ref={ref}
+      // Click sets the mesh as the new target
+      onClick={(e) => (e.stopPropagation(), state.current == dot.colorRgb)}
+      // If a click happened but this mesh wasn't hit we null out the target,
+      // This works because missed pointers fire before the actual hits
+      onPointerMissed={(e) => e.type === "click" && (state.current = null)}
+      // Right click cycles through the transform modes
+      // onContextMenu={(e) =>
+      //   snap.current === name &&
+      //   (e.stopPropagation(), (state.mode = (snap.mode + 1) % modes.length))
+      // }
+      onPointerOver={(e) => (e.stopPropagation(), setHovered(true))}
+      onPointerOut={(e) => setHovered(false)}
+      material-color={
+        snap.current === dot.colorRgb
+          ? transparentize(0.5, dot.colorRgb)
+          : dot.colorRgb
+      }
+      dispose={null}
+    >
       <sphereGeometry />
 
       <meshBasicMaterial color={dot.colorRgb} depthTest={false} />
@@ -468,10 +493,112 @@ function Dot({ dot }: { dot: Dot }) {
   );
 }
 
+function Controls() {
+  // Get notified on changes to state
+  const snap = useSnapshot(state);
+  const scene = useThree((state) => state.scene);
+  return (
+    <>
+      {/* As of drei@7.13 transform-controls can refer to the target by children, or the object prop */}
+      {/* makeDefault makes the controls known to r3f, now transform-controls can auto-disable them when active */}
+      <OrbitControls
+        makeDefault
+        minPolarAngle={0}
+        maxPolarAngle={Math.PI / 1.75}
+      />
+    </>
+  );
+}
+
+const CanvasMain = ({ dots }: { dots: Dot[] }) => {
+  return (
+    <Canvas shadows camera={{ position: [0, 20, 30], fov: 50 }} dpr={[1, 2]}>
+      <pointLight position={[100, 100, 100]} intensity={0.8} />
+      <hemisphereLight
+        color="#ffffff"
+        groundColor="#b9b9b9"
+        position={[-7, 25, 13]}
+        intensity={0.85}
+      />
+      <fog attach="fog" args={["#f2f2f5", 35, 60]} />
+      {/* <group position={[0, 0, 0]}> */}
+
+      <Suspense fallback={null}>
+        <group position={[0, 10, 0]}>
+          <Grid />
+          <Shadows />
+          {dots.map((dot) => (
+            <Model key={dot.colorRgb} dot={dot} />
+          ))}
+        </group>
+      </Suspense>
+      <Controls />
+    </Canvas>
+  );
+};
+
+// const CanvasMain = ({ dots }: { dots: Dot[] }) => {
+//   console.log("dots", dots);
+//   //   const testDots = [
+//   //     {
+//   //       size: 56,
+//   //       colorRgb: "#42f2f5",
+//   //       hue: 208.57142857142873,
+//   //       saturation: 12.574850299401195,
+//   //       brightness: 65.49019607843137,
+//   //     },
+//   //   ];
+
+//   return (
+//     <Canvas shadows camera={{ fov: 30, position: [5, 17, 17] }}>
+//       <color attach="background" args={["#f2f2f5"]} />
+//       <fog attach="fog" args={["#f2f2f5", 35, 60]} />
+//       <group position={[0, 0, 0]}>
+//         <Grid />
+//         <Shadows />
+//         <Dots dots={dots} />
+//       </group>
+//       <Gizmo />
+//     </Canvas>
+//   );
+// };
+
+// function Dots({ dots }: { dots: Dot[] }) {
+//   const ref = useRef<any>();
+//   useFrame((state, delta) => {
+//     if (ref?.current) {
+//       void (ref.current.rotation.y = MathUtils.damp(
+//         ref.current.rotation.y,
+//         (-state.mouse.x * Math.PI) / 6,
+//         2.75,
+//         delta
+//       ));
+//     }
+//   });
+//   return (
+//     <group ref={ref} castShadow receiveShadow position={[0, 5, 0]}>
+//       {/* <meshStandardMaterial roughness={0} color="#f0f0f0" /> */}
+//       {dots.map((dot, i) => (
+//         <Dot key={i} dot={dot} />
+//       ))}
+//     </group>
+//   );
+// }
+
+// function Dot({ dot }: { dot: Dot }) {
+//   return (
+//     <mesh ref={ref} userData={{ color: "blue" }}>
+//       <sphereGeometry />
+
+//       <meshBasicMaterial color={dot.colorRgb} depthTest={false} />
+//     </mesh>
+//   );
+// }
+
 const Grid = ({ number = 23, lineWidth = 0.026, height = 0.5 }) => {
   const theme = useTheme();
   return (
-    <Instances castShadow receiveShadow position={[0, -1, 0]}>
+    <Instances castShadow receiveShadow position={[0, 0, 0]}>
       <planeGeometry args={[lineWidth, height]} />
       <meshBasicMaterial color={theme.bg2} />
       {Array.from({ length: number }, (_, y) =>
@@ -528,6 +655,8 @@ const GhostCanvasWrapper = styled.div`
 function GhostCanvas({ imageSrc }: GhostCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+
+  // console.log("imageSrc", imageSrc);
 
   const onLoad = useCallback(() => {
     console.log("image loaded 2");
