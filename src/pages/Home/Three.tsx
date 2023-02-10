@@ -643,8 +643,8 @@ const CanvasContent = ({ dots }: { dots: Dot[] }) => {
   });
   return (
     <group position={[0, 10, 0]} ref={ref}>
-      {showGrid && <Grid />}
-      <Shadows />
+      {/* {showGrid && <Grid />} */}
+      {/* <Shadows /> */}
       {dots.map((dot) => (
         <Model key={dot.colorRgb} dot={dot} />
       ))}
