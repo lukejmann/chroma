@@ -26,7 +26,6 @@ export const Control = React.memo(({ path }: ControlProps) => {
   const { type, label, key, ...inputProps } = input;
 
   if (type in SpecialInputs) {
-    // @ts-expect-error
     const SpecialInputForType = specialComponents[type];
     return <SpecialInputForType label={label} path={path} {...inputProps} />;
   }

@@ -68,7 +68,5 @@ function _log<T extends ControlsErrors>(
   console[fn]("LEVA: " + message, ...rest);
 }
 
-// @ts-expect-error
 export const warn = _log.bind(null, "warn");
-// @ts-expect-error
 export const log = _log.bind(null, "log");

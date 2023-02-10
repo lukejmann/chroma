@@ -81,10 +81,13 @@ export const TreeWrapper = React.memo(
         <StyledContent ref={contentRef} isRoot={isRoot} toggled={toggled}>
           {entries.map(([key, value]) =>
             isInput(value) ? (
-              // @ts-expect-error
+              // @ts-ignore
               <Control
+                // @ts-ignore
                 key={value.path}
-                valueKey={value.valueKey}
+                // @ts-ignore
+                valueKey={value.valueKey as any}
+                // @ts-ignore
                 path={value.path}
               />
             ) : (

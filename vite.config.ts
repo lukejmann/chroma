@@ -35,7 +35,7 @@ export default defineConfig({
   //   pkgJson: { name, version },
   // },
   build: {
-    outDir: "../dist",
+    outDir: "./dist",
     assetsDir: ".",
   },
 });

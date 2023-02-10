@@ -239,6 +239,7 @@ export const Store = function (this: StoreType) {
     } catch (e) {
       warn(ControlsErrors.PATH_DOESNT_EXIST, path);
     }
+    return undefined;
   };
 
   this.get = (path) => {

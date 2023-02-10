@@ -29,7 +29,7 @@ type LabelProps = React.ComponentProps<typeof StyledLabel>;
 
 function RawLabel(props: LabelProps) {
   const { id, optional, hint } = useInputContext();
-  const htmlFor = props.htmlFor || (id ? { htmlFor: id } : null);
+  const htmlFor = (props.htmlFor as any) || (id ? { htmlFor: id } : null);
 
   // If there's no tooltip, and if the label is of type string, then add a title.
   const title =
