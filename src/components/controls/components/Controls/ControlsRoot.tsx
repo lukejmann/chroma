@@ -95,6 +95,8 @@ export type ControlsRootProps = {
   hideCopyButton?: boolean;
 
   collapsable?: boolean;
+
+  offset?: number;
 };
 
 export function ControlsRoot({
@@ -212,7 +214,11 @@ const ControlsCore = React.memo(
           flat={flat}
           oneLineLabels={oneLineLabels}
           hideTitleBar={!titleBar}
-          style={{ display: shouldShow ? "block" : "none" }}
+          style={{
+            display: shouldShow ? "block" : "none",
+            top: position?.y ? `${position.y}px` : "40px",
+            left: position?.x ? `${position.x}px` : "40px",
+          }}
         >
           {titleBar && (
             <TitleWithFilter

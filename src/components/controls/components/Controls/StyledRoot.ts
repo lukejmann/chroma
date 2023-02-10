@@ -11,9 +11,9 @@ export const StyledRoot = styled("div", {
   variants: {
     fill: {
       false: {
-        position: "fixed",
-        top: "40px",
-        left: "10px",
+        // position: "fixed",
+        // top: "40px",
+        // left: "10px",
         zIndex: 1000,
         width: "$rootWidth",
       },

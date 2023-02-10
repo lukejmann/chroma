@@ -141,7 +141,7 @@ export function TitleWithFilter({
         <TitleContainer
           {...(drag ? bind() : {})}
           drag={drag}
-          filterEnabled={filterEnabled}
+          filterEnabled={!collapsable}
         >
           {title === undefined && drag ? (
             <svg
@@ -161,7 +161,7 @@ export function TitleWithFilter({
             title
           )}
         </TitleContainer>
-        <div></div>
+        {collapsable && <div></div>}
         {/* {filterEnabled && (
           <Icon active={filterShown} onClick={() => setShowFilter((f) => !f)}>
             <svg

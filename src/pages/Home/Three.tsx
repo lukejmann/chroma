@@ -126,85 +126,108 @@ const DotsUpdater = ({}: {}) => {
 
   const { hsbDatas } = useSnapshot(canvasStore);
   const {
-    maxColors,
-    ignoreColor,
-    ignoreHueDifference,
-    ignoreSaturationDifference,
-    ignoreBrightnessDifference,
-    hueWeight,
-    saturationWeight,
-    brightnessWeight,
+    colors,
+    ignoreHues,
+    ignoreSaturation,
+    ignoreBrightness,
+    clusterRuns,
   } = useSnapshot(settingsStore);
   useEffect(() => {
-    const totalDatas = hsbDatas.length;
-    const numClusters = Math.min(maxColors, hsbDatas.length);
     // using k-means clustering
 
+    const hsbaDatasFiltered = hsbDatas.filter((hsbData) => {
+      const { h, s, b } = hsbData;
+      const ignoreHue = ignoreHues[0] <= h && h <= ignoreHues[1];
+      const ignoreSat = ignoreSaturation[0] <= s && s <= ignoreSaturation[1];
+      const ignoreBri = ignoreBrightness[0] <= b && b <= ignoreBrightness[1];
+      return !(ignoreHue || ignoreSat || ignoreBri);
+    });
+    const totalDatas = hsbaDatasFiltered.length;
+    const numClusters = Math.min(colors, totalDatas);
+
     // first we randomly select the initial centroids
-    const centroids: HSBDatapoint[] = [];
+    let centroids: HSBDatapoint[] = [];
     for (let i = 0; i < numClusters; i++) {
       const randomIndex = Math.floor(Math.random() * totalDatas);
-      const randomData = hsbDatas[randomIndex];
+      const randomData = hsbaDatasFiltered[randomIndex];
       centroids.push(randomData);
     }
 
-    // then we assign each datapoint to the closest centroid
-    const clusters: HSBDatapoint[][] = [];
-    for (let i = 0; i < numClusters; i++) {
-      clusters.push([]);
-    }
-    for (let i = 0; i < totalDatas; i++) {
-      const data = hsbDatas[i];
-      const { h, s, b } = data;
-      let minDistance = Infinity;
-      let minIndex = -1;
-      for (let j = 0; j < numClusters; j++) {
-        const centroid = centroids[j];
-        const { h: hCentroid, s: sCentroid, b: bCentroid } = centroid;
-        const distance =
-          (h - hCentroid) ** 2 + (s - sCentroid) ** 2 + (b - bCentroid) ** 2;
-        if (distance < minDistance) {
-          minDistance = distance;
-          minIndex = j;
+    let runCount = 0;
+    let clustersDone: HSBDatapoint[][] = [];
+
+    console.log("starting clustering");
+    console.log(`${clusterRuns} runs`);
+    while (runCount < clusterRuns) {
+      console.log(`run ${runCount + 1}`);
+      // then we assign each datapoint to the closest centroid
+      const clusters: HSBDatapoint[][] = [];
+      for (let i = 0; i < numClusters; i++) {
+        clusters.push([]);
+      }
+      for (let i = 0; i < totalDatas; i++) {
+        const data = hsbaDatasFiltered[i];
+        const { h, s, b } = { ...data };
+        let minDistance = Infinity;
+        let minIndex = -1;
+        for (let j = 0; j < numClusters; j++) {
+          const centroid = centroids[j];
+          const { h: hCentroid, s: sCentroid, b: bCentroid } = centroid;
+          const distance =
+            (h - hCentroid) ** 2 + (s - sCentroid) ** 2 + (b - bCentroid) ** 2;
+          if (distance < minDistance) {
+            minDistance = distance;
+            minIndex = j;
+          }
+        }
+        clusters[minIndex].push(data);
+      }
+
+      // then we calculate the new centroids
+      const newCentroids: HSBDatapoint[] = [];
+      for (let i = 0; i < numClusters; i++) {
+        const cluster = clusters[i];
+        const totalClusterDatas = cluster.length;
+        let hSum = 0;
+        let sSum = 0;
+        let bSum = 0;
+        for (let j = 0; j < totalClusterDatas; j++) {
+          const data = cluster[j];
+          const { h, s, b } = data;
+          hSum += h;
+          sSum += s;
+          bSum += b;
+        }
+        const newCentroid = {
+          h: hSum / totalClusterDatas,
+          s: sSum / totalClusterDatas,
+          b: bSum / totalClusterDatas,
+        };
+        newCentroids.push(newCentroid);
+      }
+
+      // then we check if the centroids have changed
+      let centroidsChanged = false;
+      for (let i = 0; i < numClusters; i++) {
+        const centroid = centroids[i];
+        const newCentroid = newCentroids[i];
+        const { h, s, b } = centroid;
+        const { h: hNew, s: sNew, b: bNew } = newCentroid;
+        if (h !== hNew || s !== sNew || b !== bNew) {
+          centroidsChanged = true;
+          break;
         }
       }
-      clusters[minIndex].push(data);
-    }
 
-    // then we calculate the new centroids
-    const newCentroids: HSBDatapoint[] = [];
-    for (let i = 0; i < numClusters; i++) {
-      const cluster = clusters[i];
-      const totalClusterDatas = cluster.length;
-      let hSum = 0;
-      let sSum = 0;
-      let bSum = 0;
-      for (let j = 0; j < totalClusterDatas; j++) {
-        const data = cluster[j];
-        const { h, s, b } = data;
-        hSum += h;
-        sSum += s;
-        bSum += b;
-      }
-      const newCentroid = {
-        h: hSum / totalClusterDatas,
-        s: sSum / totalClusterDatas,
-        b: bSum / totalClusterDatas,
-      };
-      newCentroids.push(newCentroid);
-    }
-
-    // then we check if the centroids have changed
-    let centroidsChanged = false;
-    for (let i = 0; i < numClusters; i++) {
-      const centroid = centroids[i];
-      const newCentroid = newCentroids[i];
-      const { h, s, b } = centroid;
-      const { h: hNew, s: sNew, b: bNew } = newCentroid;
-      if (h !== hNew || s !== sNew || b !== bNew) {
-        centroidsChanged = true;
+      // if the centroids have changed, we repeat the process
+      if (centroidsChanged) {
+        centroids = newCentroids;
+        runCount++;
+        clustersDone = clusters;
+      } else {
         break;
       }
+      clustersDone = clusters;
     }
 
     // if the centroids have changed, we repeat the process
@@ -217,7 +240,7 @@ const DotsUpdater = ({}: {}) => {
     // then we create the dots
     const dots: Dot[] = [];
     for (let i = 0; i < numClusters; i++) {
-      const cluster = clusters[i];
+      const cluster = clustersDone[i];
       const totalClusterDatas = cluster.length;
 
       // size should be proportional to the number of pixels in the cluster
@@ -241,29 +264,6 @@ const DotsUpdater = ({}: {}) => {
       const [h, s, bH] = RGBToHSB(r, g, b);
 
       // we ignore colors that are too close to the ignore color
-      const [hIgnore, sIgnore, bIgnore] = RGBToHSB(
-        ignoreColor.r,
-        ignoreColor.g,
-        ignoreColor.b
-      );
-
-      const hueDifference = Math.abs(h - hIgnore);
-      console.log("hueDifference: ", hueDifference);
-      if (hueDifference < ignoreHueDifference) {
-        continue;
-      }
-
-      const saturationDifference = Math.abs(s - sIgnore);
-      console.log("saturationDifference: ", saturationDifference);
-      if (saturationDifference < ignoreSaturationDifference) {
-        continue;
-      }
-
-      const brightnessDifference = Math.abs(bH - bIgnore);
-      console.log("brightnessDifference: ", brightnessDifference);
-      if (brightnessDifference < ignoreBrightnessDifference) {
-        continue;
-      }
 
       // const distance =
       //   (h - hIgnore) ** 2 + (s - sIgnore) ** 2 + (bH - bIgnore) ** 2;
@@ -290,14 +290,11 @@ const DotsUpdater = ({}: {}) => {
     canvasStore.dots = dots;
   }, [
     hsbDatas,
-    maxColors,
-    ignoreColor,
-    ignoreHueDifference,
-    ignoreSaturationDifference,
-    ignoreBrightnessDifference,
-    hueWeight,
-    saturationWeight,
-    brightnessWeight,
+    colors,
+    ignoreHues,
+    ignoreSaturation,
+    ignoreBrightness,
+    clusterRuns,
   ]);
 
   return null;
@@ -314,21 +311,18 @@ const CanvasWrapper = styled.div`
 `;
 
 const initalSettings = {
-  maxColors: 8,
-  ignoreColor: { r: 0, g: 0, b: 0 } as { r: number; g: number; b: number },
-  ignoreHueDifference: 10,
-  ignoreSaturationDifference: 10,
-  ignoreBrightnessDifference: 10,
-  hueWeight: 1,
-  saturationWeight: 1,
-  brightnessWeight: 1,
+  colors: 8,
+  ignoreHues: [0, 0],
+  ignoreSaturation: [0, 0],
+  ignoreBrightness: [0, 0],
   radius: 0.5,
-  minZ: -1,
-  maxZ: 1,
+  height: 0.5,
   baseX: 0,
   baseY: 0,
   baseZ: 0,
   dotRadiusScale: 1,
+  clusterRuns: 1,
+  showGrid: false,
 };
 
 export const settingsStore = proxy({
@@ -348,73 +342,52 @@ export const ThreeCanvas = ({}) => {
   const settingsStore2 = useCreateStore();
 
   const {
-    maxColors,
-    ignoreColor,
-    ignoreHueDifference,
-    ignoreSaturationDifference,
-    ignoreBrightnessDifference,
-    hueWeight,
-    saturationWeight,
-    brightnessWeight,
+    colors,
+    ignoreHues,
+    ignoreSaturation,
+    ignoreBrightness,
+
     radius,
-    minZ,
-    maxZ,
-    baseX,
-    baseY,
-    baseZ,
+    height,
     dotRadiusScale,
+    clusterRuns,
+    showGrid,
   } = useControls(
     {
-      maxColors: { value: 8, min: 1, max: 20, step: 1 },
-      ignoreColor: { value: { r: 0, g: 0, b: 0 } },
-      ignoreHueDifference: { value: 10, min: 0, max: 360, step: 1 },
-      ignoreSaturationDifference: { value: 10, min: 0, max: 100, step: 1 },
-      ignoreBrightnessDifference: { value: 10, min: 0, max: 100, step: 1 },
-      hueWeight: { value: 1, min: 0, max: 10, step: 0.1 },
-      saturationWeight: { value: 1, min: 0, max: 10, step: 0.1 },
-      brightnessWeight: { value: 1, min: 0, max: 10, step: 0.1 },
-      radius: { value: 10.85, min: 0, max: 100, step: 0.01 },
-      minZ: { value: -1, min: -50, max: 50, step: 0.01 },
-      maxZ: { value: 1, min: -50, max: 50, step: 0.01 },
-      baseX: { value: 0, min: -50, max: 50, step: 0.01 },
-      baseY: { value: 0, min: -50, max: 50, step: 0.01 },
-      baseZ: { value: 0, min: -50, max: 50, step: 0.01 },
-      dotRadiusScale: { value: 5, min: 0.01, max: 10, step: 0.01 },
+      colors: { value: 20, min: 1, max: 1000, step: 1 },
+      ignoreHues: { value: [0, 0], min: 0, max: 360, step: 1 },
+      ignoreSaturation: { value: [0, 0], min: 0, max: 100, step: 1 },
+      ignoreBrightness: { value: [0, 0], min: 0, max: 100, step: 1 },
+
+      radius: { value: 10.85, min: 0, max: 100, step: 1 },
+      height: { value: 0.5, min: 0, max: 100, step: 1 },
+
+      dotRadiusScale: { value: 5, min: 0.01, max: 100, step: 1 },
+      clusterRuns: { value: 3, min: 1, max: 100, step: 1 },
+      // showGrid: { value: false },
     },
     { store: settingsStore2 }
   ) as any;
   useEffect(() => {
-    settingsStore.maxColors = maxColors;
-    settingsStore.ignoreColor = ignoreColor;
-    settingsStore.ignoreHueDifference = ignoreHueDifference;
-    settingsStore.ignoreSaturationDifference = ignoreSaturationDifference;
-    settingsStore.ignoreBrightnessDifference = ignoreBrightnessDifference;
-    settingsStore.hueWeight = hueWeight;
-    settingsStore.saturationWeight = saturationWeight;
-    settingsStore.brightnessWeight = brightnessWeight;
+    settingsStore.colors = colors;
+    settingsStore.ignoreHues = ignoreHues;
+    settingsStore.ignoreSaturation = ignoreSaturation;
+    settingsStore.ignoreBrightness = ignoreBrightness;
     settingsStore.radius = radius;
-    settingsStore.minZ = minZ;
-    settingsStore.maxZ = maxZ;
-    settingsStore.baseX = baseX;
-    settingsStore.baseY = baseY;
-    settingsStore.baseZ = baseZ;
+    settingsStore.height = height;
     settingsStore.dotRadiusScale = dotRadiusScale;
+    settingsStore.clusterRuns = clusterRuns;
+    // settingsStore.showGrid = showGrid;
   }, [
-    maxColors,
-    ignoreColor,
-    hueWeight,
-    saturationWeight,
-    brightnessWeight,
-    ignoreHueDifference,
-    ignoreSaturationDifference,
-    ignoreBrightnessDifference,
+    colors,
+    ignoreHues,
+    ignoreSaturation,
+    ignoreBrightness,
     radius,
-    minZ,
-    maxZ,
-    baseX,
-    baseY,
-    baseZ,
+    height,
     dotRadiusScale,
+    clusterRuns,
+    // showGrid,
   ]);
 
   const { image } = useControls(
@@ -445,21 +418,20 @@ export const ThreeCanvas = ({}) => {
       >
         <ControlsPanel
           titleBar={{
-            title: "Settings",
-            filter: false,
-            position: { x: 0, y: 400 },
-          }}
-          collapsable={true}
-          store={settingsStore2}
-        />
-        <ControlsPanel
-          titleBar={{
             title: "Image",
             filter: false,
-            position: { x: 0, y: 0 },
           }}
           // collapsed={true}
           store={imageStore}
+        />
+        <ControlsPanel
+          titleBar={{
+            title: "Settings",
+            filter: false,
+          }}
+          // offset={true}
+          collapsable={true}
+          store={settingsStore2}
         />
         {/* <LevaPanel fill flat titleBar={false} store={spaceStore} />
         <LevaPanel fill flat titleBar={false} store={fontSizesStore} />
@@ -483,7 +455,7 @@ export const ThreeCanvas = ({}) => {
 const state = proxy({ current: null, mode: 0 });
 
 function Model({ dot }: { dot: Dot }) {
-  const { radius, baseX, baseY, baseZ, dotRadiusScale, minZ, maxZ } =
+  const { radius, baseX, baseY, baseZ, dotRadiusScale, height } =
     useSnapshot(settingsStore);
 
   const ref = useRef<any>();
@@ -491,6 +463,9 @@ function Model({ dot }: { dot: Dot }) {
     const hue = dot.hue / 255;
     const saturation = dot.saturation / 100;
     const brightness = dot.brightness / 100;
+
+    const minZ = baseZ - height / 2;
+    const maxZ = baseZ + height / 2;
 
     const newZ = MathUtils.lerp(minZ, maxZ, brightness);
 
@@ -510,7 +485,7 @@ function Model({ dot }: { dot: Dot }) {
     console.log(`newX: ${newX}, newY: ${newY}`);
 
     return [newX, newY, newZ];
-  }, [dot, radius, baseX, baseY, baseZ, dotRadiusScale, minZ, maxZ]);
+  }, [dot, radius, baseX, baseY, baseZ, dotRadiusScale, height]);
 
   const size = useMemo(() => {
     const newScale = dot.size * dotRadiusScale;
@@ -589,14 +564,14 @@ function Controls() {
 
 const CanvasMain = ({ dots }: { dots: Dot[] }) => {
   return (
-    <Canvas shadows camera={{ position: [0, 50, 40], fov: 50 }} dpr={[1, 2]}>
-      <pointLight position={[100, 100, 100]} intensity={0.2} />
+    <Canvas shadows camera={{ position: [0, 60, 60], fov: 50 }} dpr={[1, 2]}>
+      {/* <pointLight position={[100, 100, 100]} intensity={0.2} />
       <hemisphereLight
         color="#ffffff"
         groundColor="#b9b9b9"
         position={[-7, 25, 13]}
         intensity={0.85}
-      />
+      /> */}
       {/* <fog attach="fog" args={["#f2f2f5", 35, 60]} /> */}
       {/* <group position={[0, 0, 0]}> */}
 
@@ -610,6 +585,7 @@ const CanvasMain = ({ dots }: { dots: Dot[] }) => {
 
 const CanvasContent = ({ dots }: { dots: Dot[] }) => {
   const ref = useRef<any>();
+  const { showGrid } = useSnapshot(settingsStore);
   useFrame((state, delta) => {
     if (ref?.current) {
       void (ref.current.rotation.y = MathUtils.damp(
@@ -622,7 +598,7 @@ const CanvasContent = ({ dots }: { dots: Dot[] }) => {
   });
   return (
     <group position={[0, 10, 0]} ref={ref}>
-      <Grid />
+      {showGrid && <Grid />}
       <Shadows />
       {dots.map((dot) => (
         <Model key={dot.colorRgb} dot={dot} />
