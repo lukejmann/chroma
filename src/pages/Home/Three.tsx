@@ -9,6 +9,9 @@ import {
 } from "react";
 import { RGBELoader } from "three-stdlib";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+// import DefaultImage from "../../assets/images/kandinsky.jpeg";
+import DefaultImage from "../../assets/images/color.jpeg";
+
 import {
   Instances,
   Instance,
@@ -125,21 +128,16 @@ const DotsUpdater = ({}: {}) => {
   //   color should be the average of the colors in the cluster
 
   const { hsbDatas } = useSnapshot(canvasStore);
-  const {
-    colors,
-    ignoreHues,
-    ignoreSaturation,
-    ignoreBrightness,
-    clusterRuns,
-  } = useSnapshot(settingsStore);
+  const { colors, hRange, sRange, bRange, clusterRuns } =
+    useSnapshot(settingsStore);
   useEffect(() => {
     // using k-means clustering
 
     const hsbaDatasFiltered = hsbDatas.filter((hsbData) => {
       const { h, s, b } = hsbData;
-      const ignoreHue = ignoreHues[0] <= h && h <= ignoreHues[1];
-      const ignoreSat = ignoreSaturation[0] <= s && s <= ignoreSaturation[1];
-      const ignoreBri = ignoreBrightness[0] <= b && b <= ignoreBrightness[1];
+      const ignoreHue = h < hRange[0] || h > hRange[1];
+      const ignoreSat = s < sRange[0] || s > sRange[1];
+      const ignoreBri = b < bRange[0] || b > bRange[1];
       return !(ignoreHue || ignoreSat || ignoreBri);
     });
     const totalDatas = hsbaDatasFiltered.length;
@@ -270,8 +268,8 @@ const DotsUpdater = ({}: {}) => {
       // if (
       //   distance
       //   ignoreHueDifference ** 2 +
-      //     ignoreSaturationDifference ** 2 +
-      //     ignoreBrightnessDifference ** 2
+      //     sRangeDifference ** 2 +
+      //     bRangeDifference ** 2
       // ) {
       //   continue;
       // }
@@ -288,14 +286,7 @@ const DotsUpdater = ({}: {}) => {
     }
 
     canvasStore.dots = dots;
-  }, [
-    hsbDatas,
-    colors,
-    ignoreHues,
-    ignoreSaturation,
-    ignoreBrightness,
-    clusterRuns,
-  ]);
+  }, [hsbDatas, colors, hRange, sRange, bRange, clusterRuns]);
 
   return null;
 };
@@ -312,9 +303,9 @@ const CanvasWrapper = styled.div`
 
 const initalSettings = {
   colors: 8,
-  ignoreHues: [0, 0],
-  ignoreSaturation: [0, 0],
-  ignoreBrightness: [0, 0],
+  hRange: [0, 0],
+  sRange: [0, 0],
+  bRange: [0, 0],
   radius: 0.5,
   height: 0.5,
   baseX: 0,
@@ -330,7 +321,7 @@ export const settingsStore = proxy({
 });
 
 export const canvasStore = proxy({
-  rgbaDatas: testRGBAData as RGBADatapoint[],
+  rgbaDatas: [] as RGBADatapoint[],
   hsbDatas: [] as HSBDatapoint[],
   dots: [] as Dot[],
 });
@@ -343,9 +334,9 @@ export const ThreeCanvas = ({}) => {
 
   const {
     colors,
-    ignoreHues,
-    ignoreSaturation,
-    ignoreBrightness,
+    hRange,
+    sRange,
+    bRange,
 
     radius,
     height,
@@ -354,25 +345,65 @@ export const ThreeCanvas = ({}) => {
     showGrid,
   } = useControls(
     {
-      colors: { value: 20, min: 1, max: 1000, step: 1 },
-      ignoreHues: { value: [0, 0], min: 0, max: 360, step: 1 },
-      ignoreSaturation: { value: [0, 0], min: 0, max: 100, step: 1 },
-      ignoreBrightness: { value: [0, 0], min: 0, max: 100, step: 1 },
-
-      radius: { value: 10.85, min: 0, max: 100, step: 1 },
-      height: { value: 0.5, min: 0, max: 100, step: 1 },
-
-      dotRadiusScale: { value: 5, min: 0.01, max: 100, step: 1 },
-      clusterRuns: { value: 3, min: 1, max: 100, step: 1 },
+      colors: { label: "Colors", value: 1200, min: 1, max: 3000, step: 1 },
+      hRange: {
+        label: "H Range",
+        value: [0, 360],
+        min: 0,
+        max: 360,
+        step: 1,
+      },
+      sRange: {
+        label: "S Range",
+        value: [15, 100],
+        min: 0,
+        max: 100,
+        step: 1,
+      },
+      bRange: {
+        label: "B Range",
+        value: [0, 80],
+        min: 0,
+        max: 100,
+        step: 1,
+      },
+      radius: {
+        label: "Radius",
+        value: 24,
+        min: 0,
+        max: 100,
+        step: 1,
+      },
+      height: {
+        label: "Height",
+        value: 24,
+        min: 0,
+        max: 200,
+        step: 1,
+      },
+      dotRadiusScale: {
+        label: "Dot Size",
+        value: 200,
+        min: 1,
+        max: 1000,
+        step: 1,
+      },
+      clusterRuns: {
+        label: "Cluster Runs",
+        value: 3,
+        min: 1,
+        max: 100,
+        step: 1,
+      },
       // showGrid: { value: false },
     },
     { store: settingsStore2 }
   ) as any;
   useEffect(() => {
     settingsStore.colors = colors;
-    settingsStore.ignoreHues = ignoreHues;
-    settingsStore.ignoreSaturation = ignoreSaturation;
-    settingsStore.ignoreBrightness = ignoreBrightness;
+    settingsStore.hRange = hRange;
+    settingsStore.sRange = sRange;
+    settingsStore.bRange = bRange;
     settingsStore.radius = radius;
     settingsStore.height = height;
     settingsStore.dotRadiusScale = dotRadiusScale;
@@ -380,9 +411,9 @@ export const ThreeCanvas = ({}) => {
     // settingsStore.showGrid = showGrid;
   }, [
     colors,
-    ignoreHues,
-    ignoreSaturation,
-    ignoreBrightness,
+    hRange,
+    sRange,
+    bRange,
     radius,
     height,
     dotRadiusScale,
@@ -393,7 +424,7 @@ export const ThreeCanvas = ({}) => {
   const { image } = useControls(
     {
       image: {
-        image: "http://localhost:5173/2232e0da-d3fa-4301-85f3-c2d6812611ac",
+        image: DefaultImage,
       },
     },
     { store: imageStore }
@@ -405,39 +436,53 @@ export const ThreeCanvas = ({}) => {
       <div
         style={{
           position: "absolute",
-          top: 100,
+          top: 0,
           left: 0,
-          display: "grid",
-          width: 300,
-          gap: 200,
-          paddingBottom: 40,
-          marginRight: 10,
-          float: "left",
-          // background: "#181C20",
+          display: "flex",
+          flexDirection: "row",
+          height: "100vh",
+          width: "fit-content",
         }}
       >
-        <ControlsPanel
-          titleBar={{
-            title: "Image",
-            filter: false,
+        <div
+          style={{
+            position: "relative",
+            // top: 'auto',
+            marginTop: "auto",
+            marginBottom: "auto",
+            left: 0,
+            display: "grid",
+            width: 300,
+            gap: 50,
+            paddingBottom: 40,
+            marginRight: 10,
+            float: "left",
+            // background: "#181C20",
           }}
-          // collapsed={true}
-          store={imageStore}
-        />
-        <ControlsPanel
-          titleBar={{
-            title: "Settings",
-            filter: false,
-          }}
-          // offset={true}
-          collapsable={true}
-          store={settingsStore2}
-        />
-        {/* <LevaPanel fill flat titleBar={false} store={spaceStore} />
+        >
+          <ControlsPanel
+            titleBar={{
+              title: "Image",
+              filter: false,
+            }}
+            // collapsed={true}
+            store={imageStore}
+          />
+          <ControlsPanel
+            titleBar={{
+              title: "Settings",
+              filter: false,
+            }}
+            // offset={true}
+            collapsable={true}
+            store={settingsStore2}
+          />
+          {/* <LevaPanel fill flat titleBar={false} store={spaceStore} />
         <LevaPanel fill flat titleBar={false} store={fontSizesStore} />
         <LevaPanel fill flat titleBar={false} store={sizesStore} />
         <LevaPanel fill flat titleBar={false} store={borderWidthsStore} />
         <LevaPanel fill flat titleBar={false} store={fontWeightsStore} /> */}
+        </div>
       </div>
       <CanvasMain dots={[...dots]} />
       <DotsUpdater />
@@ -460,7 +505,7 @@ function Model({ dot }: { dot: Dot }) {
 
   const ref = useRef<any>();
   const position = useMemo(() => {
-    const hue = dot.hue / 255;
+    const hue = dot.hue / 360;
     const saturation = dot.saturation / 100;
     const brightness = dot.brightness / 100;
 
@@ -565,14 +610,14 @@ function Controls() {
 const CanvasMain = ({ dots }: { dots: Dot[] }) => {
   return (
     <Canvas shadows camera={{ position: [0, 60, 60], fov: 50 }} dpr={[1, 2]}>
-      {/* <pointLight position={[100, 100, 100]} intensity={0.2} />
+      {/* <pointLight position={[100, 100, 100]} intensity={0.2} /> */}
       <hemisphereLight
         color="#ffffff"
         groundColor="#b9b9b9"
         position={[-7, 25, 13]}
         intensity={0.85}
-      /> */}
-      {/* <fog attach="fog" args={["#f2f2f5", 35, 60]} /> */}
+      />
+      {/* <fog attach="fog" args={["#f2f2f5", 0, 0]} /> */}
       {/* <group position={[0, 0, 0]}> */}
 
       <Suspense fallback={null}>

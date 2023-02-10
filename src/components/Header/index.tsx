@@ -3,7 +3,7 @@ import useTheme from "hooks/useTheme";
 import { NavLink } from "react-router-dom";
 import styled from "styled-components/macro";
 
-import Logo from "../../assets/images/chromaTempLogo.png";
+import Logo from "../../assets/images/chromaLogo.png";
 
 const HeaderFrame = styled.div<{ showBackground: boolean }>`
   display: flex;
@@ -27,6 +27,8 @@ const LogoText = styled.div`
 const ImageWrapper = styled.div<{ size?: number | null }>`
   ${({ theme }) => theme.flexColumnNoWrap};
   align-items: center;
+  border-radius: 16%;
+  overflow: hidden;
   justify-content: center;
   & > img,
   span {
