@@ -38,7 +38,7 @@ import {
   useControls,
   useCreateStore,
 } from "components/controls";
-import { transparentize } from "polished";
+import { transparentize, hsl, rgb } from "polished";
 import { testRGBAData } from "./testRGBAData";
 import { colors } from "theme";
 
@@ -68,11 +68,10 @@ const HSBToRGB = (h: number, s: number, b: number) => {
   return [255 * f(5), 255 * f(3), 255 * f(1)];
 };
 
-function hslToHex(h: number, s: number, l: number) {
-  console.log(`hslToHex(${h}, ${s}, ${l})`);
+function hslToHex(h, s, l) {
   l /= 100;
   const a = (s * Math.min(l, 1 - l)) / 100;
-  const f = (n: number) => {
+  const f = (n) => {
     const k = (n + h / 30) % 12;
     const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
     return Math.round(255 * color)
@@ -239,7 +238,11 @@ const DotsUpdater = ({}: {}) => {
     const dots: Dot[] = [];
     for (let i = 0; i < numClusters; i++) {
       const cluster = clustersDone[i];
+      console.log(`cluster ${i}`, cluster);
       const totalClusterDatas = cluster.length;
+      if (totalClusterDatas === 0) {
+        continue;
+      }
 
       // size should be proportional to the number of pixels in the cluster
       const size = totalClusterDatas / totalDatas;
@@ -255,9 +258,17 @@ const DotsUpdater = ({}: {}) => {
         gSum += g;
         bSum += b;
       }
+
+      console.log(`colorSums ${i}`, rSum, gSum, bSum);
+
       const r = rSum / totalClusterDatas;
       const g = gSum / totalClusterDatas;
       const b = bSum / totalClusterDatas;
+      const rFloored = Math.floor(r);
+      const gFloored = Math.floor(g);
+      const bFloored = Math.floor(b);
+
+      console.log(`color ${i}`, r, g, b);
 
       const [h, s, bH] = RGBToHSB(r, g, b);
 
@@ -273,14 +284,19 @@ const DotsUpdater = ({}: {}) => {
       // ) {
       //   continue;
       // }
+      // const hFloored = Math.floor(h);
+      // const sFloored = Math.floor(s) / 100;
+      // const bFloored = Math.floor(bH) / 100;
+      // console.log(`colorFloored ${i}`, hFloored, sFloored, bFloored);
 
       const dot: Dot = {
         size,
         hue: h,
         saturation: s,
         brightness: bH,
-        colorRgb: hslToHex(h, s, bH),
+        colorRgb: rgb(rFloored, gFloored, bFloored),
       };
+      console.log(`dot ${i}`, dot);
 
       dots.push(dot);
     }
@@ -523,18 +539,18 @@ function Model({ dot }: { dot: Dot }) {
     const newX = Math.cos(angle) * distance + baseX;
     const newY = Math.sin(angle) * distance + baseY;
 
-    console.log(
-      `hue: ${hue}, saturation: ${saturation}, brightness: ${brightness}`
-    );
-    console.log(`angle: ${angle}, distance: ${distance}, newZ: ${newZ}`);
-    console.log(`newX: ${newX}, newY: ${newY}`);
+    // console.log(
+    //   `hue: ${hue}, saturation: ${saturation}, brightness: ${brightness}`
+    // );
+    // console.log(`angle: ${angle}, distance: ${distance}, newZ: ${newZ}`);
+    // console.log(`newX: ${newX}, newY: ${newY}`);
 
     return [newX, newY, newZ];
   }, [dot, radius, baseX, baseY, baseZ, dotRadiusScale, height]);
 
   const size = useMemo(() => {
     const newScale = dot.size * dotRadiusScale;
-    console.log("newScale", newScale);
+    // console.log("newScale", newScale);
     return newScale;
   }, [dot, dotRadiusScale]);
 

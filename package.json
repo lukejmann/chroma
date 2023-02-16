@@ -16,6 +16,7 @@
     "@react-three/drei": "^9.56.19",
     "@react-three/fiber": "^8.11.0",
     "@reduxjs/toolkit": "^1.9.2",
+    "hsl-to-hex": "^1.0.0",
     "inter-ui": "^3.19.3",
     "leva": "^0.9.34",
     "noisejs": "^2.1.0",
