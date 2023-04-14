@@ -38,7 +38,15 @@
     <!-- <link rel="preload" href="/fonts/Satoshi-Bold.otf" as="font" type="font/otf" crossorigin /> -->
 
     <script>
-      document.domain = "mann.xyz";
+      (function () {
+        function setZoomForSmallScreen() {
+          var zoomLevel = window.innerWidth <= 319 ? 0.2 : 1; // Adjust the zoom level (0.5) as needed
+          document.body.style.zoom = zoomLevel;
+        }
+
+        window.addEventListener("load", setZoomForSmallScreen);
+        window.addEventListener("resize", setZoomForSmallScreen);
+      })();
     </script>
 
     <style>
