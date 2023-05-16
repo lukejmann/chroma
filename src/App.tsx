@@ -11,25 +11,29 @@ import Home from "./pages/Home";
 import Header from "./components/Header";
 import Loader from "./components/Loader";
 import TopBar from "./components/TopBar";
+import CanvasMain from "pages/Home/Three";
 
 const AppWrapper = styled.div`
   display: flex;
   flex-flow: column;
   align-items: flex-start;
+  width: 100%;
+  height: 100%;
 `;
 
 const BodyWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
+  position: absolute;
+
   width: 100%;
-  padding: 70px 16px 0px 16px;
+  height: 100%;
+  padding: 0px 0px 0px 0px;
   align-items: center;
   flex: 1;
   z-index: 1;
 
-  ${({ theme }) => theme.mediaWidth.upToSmall`
-    padding: 4rem 8px 16px 8px;
-  `};
+  // ${({ theme }) => theme.mediaWidth.upToSmall`
+  //   padding: 4rem 8px 16px 8px;
+  // `};
 `;
 
 const Marginer = styled.div`
@@ -47,11 +51,11 @@ export default function App() {
         <BodyWrapper>
           <Suspense fallback={<Loader />}>
             <Switch>
-              <Route exact strict path="/" component={Home} />
+              <Route exact strict path="/" component={CanvasMain} />
             </Switch>
           </Suspense>
-          <Marginer />
-          <TopBar></TopBar>
+          {/* <Marginer /> */}
+          {/* <TopBar></TopBar> */}
         </BodyWrapper>
       </AppWrapper>
     </ErrorBoundary>

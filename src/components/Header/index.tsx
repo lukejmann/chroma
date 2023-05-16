@@ -49,10 +49,10 @@ export default function Header() {
 
   return (
     <HeaderFrame showBackground={scrollY > 70}>
-      <ImageWrapper size={21}>
+      {/* <ImageWrapper size={21}>
         <img src={Logo} alt="logo" />
-      </ImageWrapper>
-      <LogoText>Chroma</LogoText>
+      </ImageWrapper> */}
+      <LogoText>Card Concept</LogoText>
     </HeaderFrame>
   );
 }

@@ -11,12 +11,7 @@ import { useIsDarkMode } from "state/user/hooks";
 import styled from "styled-components/macro";
 import { IconWrapper } from "theme";
 import { proxy, useSnapshot, subscribe } from "valtio";
-import {
-  canvasStore,
-  RGBADatapoint,
-  settingsStore,
-  ThreeCanvas,
-} from "./Three";
+import CanvasMain from "./Three";
 
 export const TextStandard = styled(Text)`
   font-family: "Satoshi", sans-serif;
@@ -36,12 +31,13 @@ export const PageWrapper = styled.main<{ margin?: string; maxWidth?: string }>`
   margin-top: ${({ margin }) => margin ?? "0px"};
   max-width: ${({ maxWidth }) => maxWidth ?? "510px"};
   width: 100%;
+  height: 100%;
   margin-top: 1rem;
   // margin-left: auto;
   margin-right: auto;
   width: 100%;
   max-width: 940px;
-  height: 426px;
+  // height: 426px;
   z-index: 1;
 `;
 
@@ -183,11 +179,11 @@ const chromaStore = proxy({
 });
 
 export default function Home() {
-  return <ThreeCanvas />;
+  // return;
   return (
     <>
       <PageWrapper>
-        {/* <TwoColumnWrapper> */}
+        <CanvasMain />;{/* <TwoColumnWrapper> */}
         {/* <UploadArea
           status={chromaStore.uploadStatus}
           // onDrop={handleDrop}
@@ -213,11 +209,9 @@ export default function Home() {
           )}
         </UploadArea> */}
         {/* <GhostCanvasWrapper */}
-
         {/* <div></div> */}
         {/* </TwoColumnWrapper> */}
       </PageWrapper>
-      <ThreeCanvas></ThreeCanvas>
     </>
   );
 }
